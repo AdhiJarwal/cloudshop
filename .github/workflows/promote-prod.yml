@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  promote:
+  Promote_To_Production:
     runs-on: ubuntu-latest
     environment: production
     steps:

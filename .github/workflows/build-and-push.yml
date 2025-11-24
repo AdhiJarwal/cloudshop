@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  Build_Docker_Images:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

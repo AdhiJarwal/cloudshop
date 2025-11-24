@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import psycopg2
@@ -6,6 +7,14 @@ from .db import get_db_connection, init_db
 import os
 
 app = FastAPI(title="CloudShop API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Product(BaseModel):
     id: Optional[int] = None
@@ -92,6 +101,10 @@ async def delete_product(product_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete product: {str(e)}")
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    return {}
 
 @app.get("/")
 async def root():

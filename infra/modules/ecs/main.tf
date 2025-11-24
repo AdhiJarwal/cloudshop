@@ -118,21 +118,22 @@ resource "aws_ecs_service" "backend_blue" {
   depends_on = [var.alb_listener_arn]
 }
 
-resource "aws_ecs_service" "backend_green" {
-  name            = "${var.environment}-backend-green"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend_green.arn
-  desired_count   = var.active_color == "green" ? 1 : 0
-  launch_type     = "FARGATE"
-  network_configuration {
-    subnets          = var.subnet_ids
-    security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
-  }
-  load_balancer {
-    target_group_arn = var.target_group_green_arn
-    container_name   = "backend"
-    container_port   = 8000
-  }
-  depends_on = [var.alb_listener_arn]
-}
+# Green service created only when needed for blue/green deployment
+# resource "aws_ecs_service" "backend_green" {
+#   name            = "${var.environment}-backend-green"
+#   cluster         = aws_ecs_cluster.main.id
+#   task_definition = aws_ecs_task_definition.backend_green.arn
+#   desired_count   = var.active_color == "green" ? 1 : 0
+#   launch_type     = "FARGATE"
+#   network_configuration {
+#     subnets          = var.subnet_ids
+#     security_groups  = [aws_security_group.ecs_tasks.id]
+#     assign_public_ip = true
+#   }
+#   load_balancer {
+#     target_group_arn = var.target_group_green_arn
+#     container_name   = "backend"
+#     container_port   = 8000
+#   }
+#   depends_on = [var.alb_listener_arn]
+# }
