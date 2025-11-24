@@ -75,24 +75,24 @@ resource "aws_iam_role" "ecs_task" {
 }
 
 module "ecs" {
-  source                = "../../modules/ecs"
-  environment           = var.environment
-  vpc_id                = module.vpc.vpc_id
-  subnet_ids            = module.vpc.public_subnet_ids
-  alb_security_group_id = module.alb.alb_security_group_id
-  target_group_blue_arn = module.alb.target_group_blue_arn
+  source                 = "../../modules/ecs"
+  environment            = var.environment
+  vpc_id                 = module.vpc.vpc_id
+  subnet_ids             = module.vpc.public_subnet_ids
+  alb_security_group_id  = module.alb.alb_security_group_id
+  target_group_blue_arn  = module.alb.target_group_blue_arn
   target_group_green_arn = module.alb.target_group_green_arn
-  alb_listener_arn      = module.alb.listener_arn
-  execution_role_arn    = aws_iam_role.ecs_execution.arn
-  task_role_arn         = aws_iam_role.ecs_task.arn
-  ecr_repository_url    = aws_ecr_repository.backend.repository_url
-  backend_image_tag     = var.backend_image_tag
-  active_color          = var.active_color
-  db_host               = module.rds.db_address
-  db_name               = module.rds.db_name
-  db_user               = "cloudshop_admin"
-  db_password           = var.db_password
-  aws_region            = var.aws_region
+  alb_listener_arn       = module.alb.listener_arn
+  execution_role_arn     = aws_iam_role.ecs_execution.arn
+  task_role_arn          = aws_iam_role.ecs_task.arn
+  ecr_repository_url     = aws_ecr_repository.backend.repository_url
+  backend_image_tag      = var.backend_image_tag
+  active_color           = var.active_color
+  db_host                = module.rds.db_address
+  db_name                = module.rds.db_name
+  db_user                = "cloudshop_admin"
+  db_password            = var.db_password
+  aws_region             = var.aws_region
 }
 
 module "rds" {

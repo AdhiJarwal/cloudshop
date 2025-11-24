@@ -21,8 +21,37 @@ docker-compose up
 - API Docs: http://localhost:8000/docs
 
 ### AWS Deployment
-1. Follow [SETUP.md](SETUP.md) for detailed instructions
-2. Or use [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for step-by-step guide
+
+**See [RUN_PROJECT.md](RUN_PROJECT.md) for complete step-by-step commands**
+
+1. **Bootstrap** (one-time):
+```bash
+cd infra/bootstrap && terraform init && terraform apply -auto-approve
+```
+
+2. **Deploy Stage**:
+```bash
+cd infra/envs/stage && terraform init && terraform apply -auto-approve -var="db_password=StagePass123"
+```
+
+3. **Build & Push Backend**:
+```bash
+cd backend
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 746669238399.dkr.ecr.us-east-1.amazonaws.com
+docker build --platform linux/amd64 -t 746669238399.dkr.ecr.us-east-1.amazonaws.com/stage-cloudshop-backend:latest .
+docker push 746669238399.dkr.ecr.us-east-1.amazonaws.com/stage-cloudshop-backend:latest
+aws ecs update-service --cluster stage-cluster --service stage-backend-blue --force-new-deployment --region us-east-1
+```
+
+4. **Deploy Frontend**:
+```bash
+cd frontend
+export REACT_APP_API_URL=http://stage-alb-458962299.us-east-1.elb.amazonaws.com
+npm run build
+aws s3 sync build/ s3://stage-cloudshop-frontend-746669238399/ --delete
+```
+
+5. **Access Stage**: http://stage-cloudshop-frontend-746669238399.s3-website-us-east-1.amazonaws.com
 
 ## 📁 Project Structure
 
@@ -39,14 +68,36 @@ cloudshop/
 └── scripts/           # Helper scripts
 ```
 
-## 🔄 Blue/Green Deployment
+## 🔄 CI/CD with GitHub Actions
 
-The project implements zero-downtime deployments:
+### Automated Workflows
 
-1. **Stage**: Automatic deployment on push to `main`
-2. **Production**: Manual promotion with approval
-3. **Rollback**: Instant switch back to previous version
-4. **Health Checks**: Automated smoke tests before traffic switch
+1. **Build and Push Image** (automatic on push to `main`):
+   - Builds Docker images
+   - Pushes to Amazon ECR
+   - Tags with Git commit SHA
+
+2. **Deploy to Stage** (automatic after build):
+   - Deploys to stage environment
+   - Updates ECS service
+   - Runs smoke tests
+
+3. **PR Checks** (automatic on Pull Requests):
+   - Runs backend tests
+   - Runs frontend tests
+   - Validates Terraform
+
+4. **Promote to Production** (manual trigger):
+   - Go to: https://github.com/AdhiJarwal/cloudshop/actions
+   - Click "Promote to Production"
+   - Click "Run workflow"
+   - Enter image tag (Git SHA or `latest`)
+   - Deploys to production
+
+### Typical Workflow
+```
+Push to main → Build → Deploy Stage → Test → Manually Promote to Prod
+```
 
 ## 🎯 Features
 
@@ -60,8 +111,10 @@ The project implements zero-downtime deployments:
 
 ## 📚 Documentation
 
+- **[RUN_PROJECT.md](RUN_PROJECT.md)** - Complete commands to run everything ⭐
 - [SETUP.md](SETUP.md) - Detailed setup instructions
 - [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment
+- [COMPLETE_DEPLOYMENT_GUIDE.md](COMPLETE_DEPLOYMENT_GUIDE.md) - Full deployment guide
 - [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Complete project overview
 - [QUICKSTART.md](QUICKSTART.md) - Quick reference guide
 
@@ -72,12 +125,45 @@ The project implements zero-downtime deployments:
 ## 🧹 Cleanup
 
 ```bash
-# Destroy environments
-cd infra/envs/stage && terraform destroy
-cd infra/envs/prod && terraform destroy
-cd infra/bootstrap && terraform destroy
+# Quick cleanup script
+./cleanup-aws.sh
+
+# Or manual cleanup
+cd infra/envs/stage && terraform destroy -auto-approve -var="db_password=StagePass123"
+cd ../prod && terraform destroy -auto-approve -var="db_password=ProdPass456"
+cd ../../bootstrap && terraform destroy -auto-approve
+```
+
+## 🔑 Key Information
+
+- **AWS Account ID**: 746669238399
+- **Region**: us-east-1
+- **Stage DB Password**: StagePass123
+- **Prod DB Password**: ProdPass456
+- **Stage Frontend**: http://stage-cloudshop-frontend-746669238399.s3-website-us-east-1.amazonaws.com
+- **Stage API**: http://stage-alb-458962299.us-east-1.elb.amazonaws.com
+
+## 🐛 Troubleshooting
+
+### Backend not responding
+```bash
+aws logs tail /ecs/stage/backend-blue --region us-east-1 --follow
+```
+
+### Frontend shows errors
+```bash
+# Rebuild with correct API URL
+cd frontend
+export REACT_APP_API_URL=http://stage-alb-458962299.us-east-1.elb.amazonaws.com
+npm run build
+aws s3 sync build/ s3://stage-cloudshop-frontend-746669238399/ --delete
+```
+
+### Check deployment status
+```bash
+aws ecs describe-services --cluster stage-cluster --services stage-backend-blue --region us-east-1
 ```
 
 ## 🆘 Support
 
-See troubleshooting sections in [SETUP.md](SETUP.md) for common issues and solutions.
+See troubleshooting sections in [SETUP.md](SETUP.md) for common issues and solutions.# Test
