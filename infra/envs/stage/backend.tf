@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "cloudshop-terraform-state"
+    bucket         = "adhi-cloudshop-terraform-state"
     key            = "stage/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
