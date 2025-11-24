@@ -111,7 +111,13 @@ Push to main → Build → Deploy Stage → Test → Manually Promote to Prod
 
 ## 📚 Documentation
 
-- **[RUN_PROJECT.md](RUN_PROJECT.md)** - Complete commands to run everything ⭐
+### 🌟 Start Here
+- **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Complete guide from setup to production ⭐⭐⭐
+- **[DEPLOYMENT_FLOW.md](DEPLOYMENT_FLOW.md)** - Visual deployment flow and checklists ⭐⭐
+- **[RUN_PROJECT.md](RUN_PROJECT.md)** - All commands in one place ⭐
+
+### 📖 Additional Guides
+- [README.md](README.md) - This file (project overview)
 - [SETUP.md](SETUP.md) - Detailed setup instructions
 - [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment
 - [COMPLETE_DEPLOYMENT_GUIDE.md](COMPLETE_DEPLOYMENT_GUIDE.md) - Full deployment guide
