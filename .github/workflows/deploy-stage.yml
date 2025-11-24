@@ -39,52 +39,31 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Get current active color
-        id: active-color
-        run: |
-          ACTIVE=$(aws ssm get-parameter --name /stage/backend/active_color --query 'Parameter.Value' --output text 2>/dev/null || echo "blue")
-          echo "current=$ACTIVE" >> $GITHUB_OUTPUT
-          if [ "$ACTIVE" = "blue" ]; then
-            echo "inactive=green" >> $GITHUB_OUTPUT
-          else
-            echo "inactive=blue" >> $GITHUB_OUTPUT
-          fi
-
       - name: Terraform apply
         run: |
           cd infra/envs/stage
           terraform init
           terraform apply -auto-approve \
             -var="backend_image_tag=${{ steps.image-tag.outputs.tag }}" \
-            -var="active_color=${{ steps.active-color.outputs.current }}" \
+            -var="active_color=blue" \
             -var="db_password=${{ secrets.STAGE_DB_PASSWORD }}"
 
-      - name: Wait for inactive service to be stable
+      - name: Force new deployment
         run: |
           CLUSTER=$(terraform -chdir=infra/envs/stage output -raw cluster_name)
-          SERVICE=${{ steps.active-color.outputs.inactive }}
-          aws ecs wait services-stable --cluster $CLUSTER --services stage-backend-$SERVICE
+          aws ecs update-service --cluster $CLUSTER --service stage-backend-blue --force-new-deployment
+
+      - name: Wait for service to be stable
+        run: |
+          CLUSTER=$(terraform -chdir=infra/envs/stage output -raw cluster_name)
+          aws ecs wait services-stable --cluster $CLUSTER --services stage-backend-blue
 
       - name: Run smoke tests
         run: |
           ALB_DNS=$(terraform -chdir=infra/envs/stage output -raw alb_dns_name)
           bash scripts/smoke-test-api.sh http://$ALB_DNS
 
-      - name: Switch traffic to new version
-        if: success()
-        run: |
-          cd infra/envs/stage
-          terraform apply -auto-approve \
-            -var="backend_image_tag=${{ steps.image-tag.outputs.tag }}" \
-            -var="active_color=${{ steps.active-color.outputs.inactive }}" \
-            -var="db_password=${{ secrets.STAGE_DB_PASSWORD }}"
-          
-          aws ssm put-parameter \
-            --name /stage/backend/active_color \
-            --value "${{ steps.active-color.outputs.inactive }}" \
-            --overwrite
-
       - name: Deployment summary
         run: |
           echo "Deployed to stage with image tag: ${{ steps.image-tag.outputs.tag }}"
-          echo "Active color: ${{ steps.active-color.outputs.inactive }}"
+          echo "Service: stage-backend-blue"
