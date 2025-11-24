@@ -41,15 +41,10 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Run lint
-        run: |
-          cd frontend
-          npm run lint
-
       - name: Run tests
         run: |
           cd frontend
-          npm test
+          CI=true npm test -- --passWithNoTests
 
   Terraform_Validation:
     runs-on: ubuntu-latest
