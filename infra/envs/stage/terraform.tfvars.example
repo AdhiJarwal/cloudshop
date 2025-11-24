@@ -1,0 +1,5 @@
+environment        = "stage"
+aws_region         = "us-east-1"
+active_color       = "blue"
+backend_image_tag  = "latest"
+db_password        = "CHANGE_ME_STRONG_PASSWORD"

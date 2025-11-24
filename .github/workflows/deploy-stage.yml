@@ -1,0 +1,90 @@
+name: Deploy to Stage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image tag
+        uses: actions/download-artifact@v4
+        with:
+          name: image-tag
+        continue-on-error: true
+
+      - name: Set image tag
+        id: image-tag
+        run: |
+          if [ -f image-tag.txt ]; then
+            echo "tag=$(cat image-tag.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Get current active color
+        id: active-color
+        run: |
+          ACTIVE=$(aws ssm get-parameter --name /stage/backend/active_color --query 'Parameter.Value' --output text 2>/dev/null || echo "blue")
+          echo "current=$ACTIVE" >> $GITHUB_OUTPUT
+          if [ "$ACTIVE" = "blue" ]; then
+            echo "inactive=green" >> $GITHUB_OUTPUT
+          else
+            echo "inactive=blue" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform apply
+        run: |
+          cd infra/envs/stage
+          terraform init
+          terraform apply -auto-approve \
+            -var="backend_image_tag=${{ steps.image-tag.outputs.tag }}" \
+            -var="active_color=${{ steps.active-color.outputs.current }}" \
+            -var="db_password=${{ secrets.STAGE_DB_PASSWORD }}"
+
+      - name: Wait for inactive service to be stable
+        run: |
+          CLUSTER=$(terraform -chdir=infra/envs/stage output -raw cluster_name)
+          SERVICE=${{ steps.active-color.outputs.inactive }}
+          aws ecs wait services-stable --cluster $CLUSTER --services stage-backend-$SERVICE
+
+      - name: Run smoke tests
+        run: |
+          ALB_DNS=$(terraform -chdir=infra/envs/stage output -raw alb_dns_name)
+          bash scripts/smoke-test-api.sh http://$ALB_DNS
+
+      - name: Switch traffic to new version
+        if: success()
+        run: |
+          cd infra/envs/stage
+          terraform apply -auto-approve \
+            -var="backend_image_tag=${{ steps.image-tag.outputs.tag }}" \
+            -var="active_color=${{ steps.active-color.outputs.inactive }}" \
+            -var="db_password=${{ secrets.STAGE_DB_PASSWORD }}"
+          
+          aws ssm put-parameter \
+            --name /stage/backend/active_color \
+            --value "${{ steps.active-color.outputs.inactive }}" \
+            --overwrite
+
+      - name: Deployment summary
+        run: |
+          echo "Deployed to stage with image tag: ${{ steps.image-tag.outputs.tag }}"
+          echo "Active color: ${{ steps.active-color.outputs.inactive }}"
