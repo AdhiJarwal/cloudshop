@@ -67,7 +67,7 @@ echo ""
 
 cd ../envs/stage
 terraform init
-terraform apply -auto-approve -var="db_password=StagePass123"
+terraform apply -auto-approve
 
 # Get stage outputs
 STAGE_ALB=$(terraform output -raw alb_dns_name)
@@ -171,7 +171,7 @@ echo ""
 
 cd ../infra/envs/prod
 terraform init
-terraform apply -auto-approve -var="db_password=ProdPass456"
+terraform apply -auto-approve
 
 # Get prod outputs
 PROD_ALB=$(terraform output -raw alb_dns_name)
